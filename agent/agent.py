@@ -24,24 +24,6 @@ from tools import (
 )
 from utils import ai_prompt, execute_db_operation
 
-"""
-Emergency Response Voice Agent
-
-This agent handles emergency calls using LiveKit's voice agent capabilities.
-Features:
-- Speech-to-text processing of emergency calls
-- LLM-based response generation
-- Text-to-speech response delivery
-- Emergency session management and dispatch functionality
-- Detailed transcript recording of conversations
-
-Transcript Recording:
-- All user and agent messages are recorded in the SessionTranscript table
-- System messages mark the beginning and end of sessions
-- Speaker type (AGENT, CALLER, SYSTEM) is recorded for each entry
-- Full conversation history is preserved for review and analysis
-"""
-
 load_dotenv(dotenv_path=".env.local")
 logger = logging.getLogger("voice-agent")
 
