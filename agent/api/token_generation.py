@@ -1,7 +1,6 @@
 from livekit import api
 import os
 
-# will automatically use the LIVEKIT_API_KEY and LIVEKIT_API_SECRET env vars
 token = api.AccessToken(api_key='devkey', api_secret='secret') \
     .with_identity("python-bot") \
     .with_name("Python Bot") \

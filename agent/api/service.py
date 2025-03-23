@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 from db import prisma
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("emergency-api")
 
