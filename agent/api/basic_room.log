@@ -1,0 +1,70 @@
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at E:\coding\grind_project\agent-dispatcher\agent\api.py:9> exception=ValueError('api_key and api_secret must be set')>
+Traceback (most recent call last):
+  File "E:\coding\grind_project\agent-dispatcher\agent\api.py", line 118, in main
+    api.AccessToken()
+  File "E:\coding\grind_project\agent-dispatcher\agent\env\Lib\site-packages\livekit\api\access_token.py", line 116, in __init__
+    raise ValueError("api_key and api_secret must be set")
+ValueError: api_key and api_secret must be set
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at E:\coding\grind_project\agent-dispatcher\agent\api.py:9> exception=TypeError('bad argument type for built-in operation')>
+Traceback (most recent call last):
+  File "E:\coding\grind_project\agent-dispatcher\agent\api.py", line 129, in main
+    await room.connect(os.getenv("LIVEKIT_URL"), token)
+  File "E:\coding\grind_project\agent-dispatcher\agent\env\Lib\site-packages\livekit\rtc\room.py", line 342, in connect
+    req.connect.url = url
+    ^^^^^^^^^^^^^^^
+TypeError: bad argument type for built-in operation
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at E:\coding\grind_project\agent-dispatcher\agent\api.py:9> exception=TypeError('bad argument type for built-in operation')>
+Traceback (most recent call last):
+  File "E:\coding\grind_project\agent-dispatcher\agent\api.py", line 129, in main
+    await room.connect(os.getenv("LIVEKIT_URL"), token)
+  File "E:\coding\grind_project\agent-dispatcher\agent\env\Lib\site-packages\livekit\rtc\room.py", line 342, in connect
+    req.connect.url = url
+    ^^^^^^^^^^^^^^^
+TypeError: bad argument type for built-in operation
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at E:\coding\grind_project\agent-dispatcher\agent\api.py:9> exception=TypeError('bad argument type for built-in operation')>
+Traceback (most recent call last):
+  File "E:\coding\grind_project\agent-dispatcher\agent\api.py", line 129, in main
+    await room.connect(os.getenv("LIVEKIT_URL"), token)
+  File "E:\coding\grind_project\agent-dispatcher\agent\env\Lib\site-packages\livekit\rtc\room.py", line 342, in connect
+    req.connect.url = url
+    ^^^^^^^^^^^^^^^
+TypeError: bad argument type for built-in operation
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at E:\coding\grind_project\agent-dispatcher\agent\api.py:9> exception=TypeError('bad argument type for built-in operation')>
+Traceback (most recent call last):
+  File "E:\coding\grind_project\agent-dispatcher\agent\api.py", line 129, in main
+    await room.connect(os.getenv("LIVEKIT_URL"), token)
+  File "E:\coding\grind_project\agent-dispatcher\agent\env\Lib\site-packages\livekit\rtc\room.py", line 342, in connect
+    req.connect.url = url
+    ^^^^^^^^^^^^^^^
+TypeError: bad argument type for built-in operation
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at E:\coding\grind_project\agent-dispatcher\agent\api.py:9> exception=TypeError('bad argument type for built-in operation')>
+Traceback (most recent call last):
+  File "E:\coding\grind_project\agent-dispatcher\agent\api.py", line 129, in main
+    await room.connect(os.getenv("LIVEKIT_URL"), token)
+  File "E:\coding\grind_project\agent-dispatcher\agent\env\Lib\site-packages\livekit\rtc\room.py", line 342, in connect
+    req.connect.url = url
+    ^^^^^^^^^^^^^^^
+TypeError: bad argument type for built-in operation
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at E:\coding\grind_project\agent-dispatcher\agent\api.py:12> exception=ValueError('api_key and api_secret must be set')>
+Traceback (most recent call last):
+  File "E:\coding\grind_project\agent-dispatcher\agent\api.py", line 121, in main
+    api.AccessToken()
+  File "E:\coding\grind_project\agent-dispatcher\agent\env\Lib\site-packages\livekit\api\access_token.py", line 116, in __init__
+    raise ValueError("api_key and api_secret must be set")
+ValueError: api_key and api_secret must be set
+ERROR:asyncio:Task exception was never retrieved
+future: <Task finished name='Task-1' coro=<main() done, defined at E:\coding\grind_project\agent-dispatcher\agent\api.py:12> exception=TypeError('bad argument type for built-in operation')>
+Traceback (most recent call last):
+  File "E:\coding\grind_project\agent-dispatcher\agent\api.py", line 132, in main
+    await room.connect(os.getenv("LIVEKIT_URL"), token)
+  File "E:\coding\grind_project\agent-dispatcher\agent\env\Lib\site-packages\livekit\rtc\room.py", line 342, in connect
+    req.connect.url = url
+    ^^^^^^^^^^^^^^^
+TypeError: bad argument type for built-in operation
