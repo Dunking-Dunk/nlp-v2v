@@ -55,7 +55,7 @@ async def create_emergency_session(
         Dictionary with created session details including caller and location information
     """
     try:
-        # Create caller if phone number provided
+
         caller_id = None
         if caller_phone and caller_name:
             caller_data = CallerInput(
@@ -68,7 +68,6 @@ async def create_emergency_session(
                 caller_id = caller.id
                 logger.info(f"Created caller with ID: {caller_id}")
             
-        # Create location if address or coordinates provided
         location_id = None
         if any([address, landmark, gps_coordinates, city, district]):
             location_data = LocationInput(
@@ -83,7 +82,7 @@ async def create_emergency_session(
                 location_id = location.id
                 logger.info(f"Created location with ID: {location_id}")
         
-        # Create emergency session
+ 
         emergency_type_enum = None
         if emergency_type:
             try:
@@ -94,7 +93,7 @@ async def create_emergency_session(
         
         session_data = SessionInput(
             callerId=caller_id,
-            phoneNumber=caller_phone,  # Store phone number directly in session
+            phoneNumber=caller_phone,  
             emergencyType=emergency_type_enum,
             locationId=location_id,
             description=description,
@@ -144,14 +143,14 @@ async def update_session_with_caller(
         Dictionary with updated session details and caller information
     """
     try:
-        # Validate inputs
+
         if not session_id:
             return {"success": False, "error": "Session ID is required"}
         
         if not caller_phone:
             return {"success": False, "error": "Caller phone number is required"}
         
-        # Create caller data
+
         caller_data = CallerInput(
             phoneNumber=caller_phone,
             name=caller_name,
@@ -167,7 +166,6 @@ async def update_session_with_caller(
         caller_id = caller.id
         logger.info(f"Created caller with ID: {caller_id}")
         
-        # Update the session with the caller ID and phone number
         update_data = {
             "callerId": caller_id,
             "phoneNumber": caller_phone
@@ -217,14 +215,14 @@ async def update_session_with_location(
         Dictionary with updated session details and location information
     """
     try:
-        # Validate inputs
+
         if not session_id:
             return {"success": False, "error": "Session ID is required"}
         
         if not any([address, landmark, gps_coordinates, city, district]):
             return {"success": False, "error": "At least one location field is required"}
         
-        # Create location data
+
         location_data = LocationInput(
             address=address,
             landmark=landmark,
@@ -233,7 +231,7 @@ async def update_session_with_location(
             district=district
         )
         
-        # Create the location
+
         location = await create_location(location_data)
         if not location:
             logger.error("Failed to create location")
@@ -242,7 +240,7 @@ async def update_session_with_location(
         location_id = location.id
         logger.info(f"Created location with ID: {location_id}")
         
-        # Update the session with the location ID
+ 
         update_data = {
             "locationId": location_id
         }
@@ -293,7 +291,7 @@ async def dispatch_responder(
         Dictionary with dispatch information
     """
     try:
-        # If no responder_id is provided, find an available one
+
         if not responder_id and emergency_type:
             try:
                 emergency_type_enum = EmergencyType(emergency_type.upper())
@@ -307,7 +305,7 @@ async def dispatch_responder(
                 logger.error(f"No available responders found for emergency type: {emergency_type}")
                 return {"success": False, "error": "No available responders found"}
                 
-            # Use the first available responder
+
             responder_id = available_responders[0].id
             logger.info(f"Found available responder: {responder_id}")
         
@@ -315,7 +313,7 @@ async def dispatch_responder(
             logger.error("No responder ID provided and no available responders found")
             return {"success": False, "error": "No responder ID provided"}
             
-        # Create dispatch
+
         dispatch_data = DispatchInput(
             sessionId=session_id,
             responderId=responder_id,

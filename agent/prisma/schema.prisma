@@ -102,13 +102,13 @@ model Dispatch {
 
 // Enums
 enum SessionStatus {
-  ACTIVE // Call is in progress
-  EMERGENCY_VERIFIED // Call confirmed as emergency
-  DISPATCHED // Resources have been dispatched
-  COMPLETED // Call and response completed
-  DROPPED // Call disconnected
-  TRANSFERRED // Call transferred elsewhere
-  NON_EMERGENCY // Determined not to be an emergency
+  ACTIVE
+  EMERGENCY_VERIFIED
+  DISPATCHED
+  COMPLETED
+  DROPPED
+  TRANSFERRED
+  NON_EMERGENCY
 }
 
 enum EmergencyType {

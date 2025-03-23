@@ -89,8 +89,6 @@ async def initialize_session():
     """
     try:
         result = await create_emergency_session(
-            # Initialize with minimal information
-            # We'll update these details as they become available
             description="Initial session - details pending"
         )
         
