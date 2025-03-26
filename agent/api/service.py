@@ -25,7 +25,7 @@ async def list_sessions(
     """List all sessions with optional filters for frontend display"""
     try:
         where = {}
-        
+
         if status:
             where["status"] = status
             

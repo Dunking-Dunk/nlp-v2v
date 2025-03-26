@@ -1,9 +1,7 @@
-from .db_tools import create_emergency_session, dispatch_responder, update_session_status, update_session_with_caller, update_session_with_location
+from .db_tools import create_or_update_session, manage_dispatch, store_session_transcript
 
 __all__ = [
-    "create_emergency_session",
-    "dispatch_responder",
-    "update_session_status",
-    "update_session_with_caller",
-    "update_session_with_location",
+    "create_or_update_session",
+    "manage_dispatch",
+    "store_session_transcript",
 ]

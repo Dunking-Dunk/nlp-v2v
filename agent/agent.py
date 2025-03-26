@@ -16,11 +16,9 @@ from livekit.agents import (
 from livekit.agents.pipeline import VoicePipelineAgent
 from livekit.plugins import deepgram, silero, turn_detector, google
 from tools import (
-    create_emergency_session, 
-    dispatch_responder, 
-    update_session_status,
-    update_session_with_caller,
-    update_session_with_location
+    create_or_update_session,
+    manage_dispatch,
+    store_session_transcript
 )
 from utils import ai_prompt, execute_db_operation
 
@@ -28,39 +26,7 @@ load_dotenv(dotenv_path=".env.local")
 logger = logging.getLogger("voice-agent")
 
 
-# A function to store transcript entries in the database
-async def store_session_transcript(session_id: str, speaker_type: str, content: str):
-    """
-    Store a new session transcript entry in the database.
-    
-    Args:
-        session_id: ID of the session
-        speaker_type: Type of speaker (AGENT, CALLER, SYSTEM)
-        content: Content of the message
-    
-    Returns:
-        The created transcript entry
-    """
-    try:
-        async def operation(client, session_id, speaker_type, content):
-            return await client.sessiontranscript.create(
-                data={
-                    "sessionId": session_id,
-                    "speakerType": speaker_type,
-                    "content": content,
-                    "timestamp": datetime.now(),
-                }
-            )
-        
-        result = await execute_db_operation(operation, session_id, speaker_type, content)
-        logger.info(f"Created transcript entry for session {session_id}")
-        return result
-    except Exception as e:
-        logger.error(f"Error storing session transcript: {str(e)}")
-        return None
 
-
-# Function to create an initial session when a connection is established
 async def initialize_session():
     """
     Create an initial empty session when a connection is established.
@@ -70,7 +36,7 @@ async def initialize_session():
         The session ID if successful, None otherwise
     """
     try:
-        result = await create_emergency_session(
+        result = await create_or_update_session(
             description="Initial session - details pending"
         )
         
@@ -155,81 +121,19 @@ async def entrypoint(ctx: JobContext):
             ] = 3,
             notes: Annotated[
                 Optional[str], llm.TypeInfo(description="Additional notes about the emergency")
+            ] = None,
+            status: Annotated[
+                Optional[str], llm.TypeInfo(description="Session status (for updates)")
             ] = None
         ):
-            """Called to create a new emergency session with all relevant details. Use this when you've gathered enough information about an emergency."""
+            """Called to create or update an emergency session with all relevant details. Use this when you've gathered enough information about an emergency."""
             nonlocal current_session_id
             
-            # If we already have a session, update it instead of creating a new one
+            # If we have a current session, update it
             if current_session_id:
-                logger.info(f"Session already exists ({current_session_id}), updating instead of creating new one")
-                
-                # Update session with basic emergency information
-                status_result = await update_session_status(
+                logger.info(f"Session already exists ({current_session_id}), updating with new information")
+                result = await create_or_update_session(
                     session_id=current_session_id,
-                    emergency_type=emergency_type,
-                    description=description,
-                    priority_level=priority_level,
-                    notes=notes
-                )
-                
-                # Also update caller information if provided
-                caller_result = None
-                if caller_phone or caller_name or language:
-                    caller_result = await update_session_with_caller(
-                        session_id=current_session_id,
-                        caller_phone=caller_phone,
-                        caller_name=caller_name,
-                        language=language
-                    )
-                    if caller_result and caller_result.get("success"):
-                        logger.info(f"Updated session {current_session_id} with caller information")
-                
-                # Also update location information if provided
-                location_result = None
-                if any([address, landmark, gps_coordinates, city, district]):
-                    location_result = await update_session_with_location(
-                        session_id=current_session_id,
-                        address=address,
-                        landmark=landmark,
-                        gps_coordinates=gps_coordinates,
-                        city=city,
-                        district=district
-                    )
-                    if location_result and location_result.get("success"):
-                        logger.info(f"Updated session {current_session_id} with location information")
-                
-                if status_result and status_result.get("success"):
-                    # If any of the updates were successful, return a success
-                    caller_id = caller_result.get("caller_id") if caller_result and caller_result.get("success") else None
-                    location_id = location_result.get("location_id") if location_result and location_result.get("success") else None
-                    
-                    # Add system message about enhancing the session with details if caller or location was added
-                    if (caller_result and caller_result.get("success")) or (location_result and location_result.get("success")):
-                        system_message = f"Enhanced session with additional details at {datetime.now().isoformat()}"
-                        asyncio.create_task(
-                            store_session_transcript(
-                                session_id=current_session_id,
-                                speaker_type="SYSTEM",
-                                content=system_message
-                            )
-                        )
-                    
-                    return {
-                        "success": True,
-                        "session_id": current_session_id,
-                        "caller_id": caller_id,
-                        "location_id": location_id,
-                        "message": "Session updated with new information"
-                    }
-                else:
-                    # If all updates failed, try to create a new session
-                    logger.warning(f"Failed to update session {current_session_id}, creating new one")
-                    current_session_id = None
-            
-            # Create a new session if we don't have one already or update failed
-            if not current_session_id:
-                result = await create_emergency_session(
                     emergency_type=emergency_type,
                     description=description,
                     caller_phone=caller_phone,
@@ -241,7 +145,41 @@ async def entrypoint(ctx: JobContext):
                     city=city,
                     district=district,
                     priority_level=priority_level,
-                    notes=notes
+                    notes=notes,
+                    status=status
+                )
+                
+                if result and result.get("success"):
+                    # Add system message about enhancing the session with details
+                    system_message = f"Enhanced session with additional details at {datetime.now().isoformat()}"
+                    asyncio.create_task(
+                        store_session_transcript(
+                            session_id=current_session_id,
+                            speaker_type="SYSTEM",
+                            content=system_message
+                        )
+                    )
+                    return result
+                else:
+                    # If update failed, try to create a new session
+                    logger.warning(f"Failed to update session {current_session_id}, creating new one")
+                    current_session_id = None
+            
+            if not current_session_id:
+                result = await create_or_update_session(
+                    emergency_type=emergency_type,
+                    description=description,
+                    caller_phone=caller_phone,
+                    caller_name=caller_name,
+                    language=language,
+                    address=address,
+                    landmark=landmark,
+                    gps_coordinates=gps_coordinates,
+                    city=city,
+                    district=district,
+                    priority_level=priority_level,
+                    notes=notes,
+                    status=status
                 )
                 
                 if result and "success" in result and result["success"] and "session_id" in result:
@@ -250,114 +188,6 @@ async def entrypoint(ctx: JobContext):
                 
                 return result
             return {"success": False, "error": "Unknown error in session handling"}
-        
-        @llm.ai_callable()
-        async def update_session_with_caller(
-            self,
-            session_id: Annotated[
-                Optional[str], llm.TypeInfo(description="ID of the session to update")
-            ] = None,
-            caller_phone: Annotated[
-                str, llm.TypeInfo(description="Phone number of the caller")
-            ] = None,
-            caller_name: Annotated[
-                Optional[str], llm.TypeInfo(description="Name of the caller")
-            ] = None,
-            language: Annotated[
-                Optional[str], llm.TypeInfo(description="Preferred language of the caller (defaults to Tamil)")
-            ] = None
-        ):
-            """Called to add or update caller information for an existing session. Use this when you've gathered caller details."""
-            nonlocal current_session_id
-            
-            # If session_id not provided, use the current session
-            if not session_id and current_session_id:
-                session_id = current_session_id
-                logger.info(f"Using current session ID: {session_id} for caller update")
-            
-            result = await update_session_with_caller(
-                session_id=session_id,
-                caller_phone=caller_phone,
-                caller_name=caller_name,
-                language=language
-            )
-            
-            # If the update is successful, record it in the transcript
-            if result and result.get("success"):
-                system_message = f"Updated caller information: Phone: {caller_phone}, Name: {caller_name}"
-                asyncio.create_task(
-                    store_session_transcript(
-                        session_id=session_id,
-                        speaker_type="SYSTEM",
-                        content=system_message
-                    )
-                )
-            
-            return result
-        
-        @llm.ai_callable()
-        async def update_session_with_location(
-            self,
-            session_id: Annotated[
-                Optional[str], llm.TypeInfo(description="ID of the session to update")
-            ] = None,
-            address: Annotated[
-                Optional[str], llm.TypeInfo(description="Address of the emergency")
-            ] = None,
-            landmark: Annotated[
-                Optional[str], llm.TypeInfo(description="Nearby landmark")
-            ] = None,
-            gps_coordinates: Annotated[
-                Optional[str], llm.TypeInfo(description="GPS coordinates (lat,long)")
-            ] = None,
-            city: Annotated[
-                Optional[str], llm.TypeInfo(description="City name")
-            ] = None,
-            district: Annotated[
-                Optional[str], llm.TypeInfo(description="District name")
-            ] = None
-        ):
-            """Called to add location information for an existing session. Use this when you've gathered location details."""
-            nonlocal current_session_id
-            
-            # If session_id not provided, use the current session
-            if not session_id and current_session_id:
-                session_id = current_session_id
-                logger.info(f"Using current session ID: {session_id} for location update")
-            
-            result = await update_session_with_location(
-                session_id=session_id,
-                address=address,
-                landmark=landmark,
-                gps_coordinates=gps_coordinates,
-                city=city,
-                district=district
-            )
-            
-            # If the update is successful, record it in the transcript
-            if result and result.get("success"):
-                location_details = []
-                if address:
-                    location_details.append(f"Address: {address}")
-                if landmark:
-                    location_details.append(f"Landmark: {landmark}")
-                if gps_coordinates:
-                    location_details.append(f"GPS: {gps_coordinates}")
-                if city:
-                    location_details.append(f"City: {city}")
-                if district:
-                    location_details.append(f"District: {district}")
-                
-                system_message = f"Updated location information: {', '.join(location_details)}"
-                asyncio.create_task(
-                    store_session_transcript(
-                        session_id=session_id,
-                        speaker_type="SYSTEM",
-                        content=system_message
-                    )
-                )
-            
-            return result
         
         @llm.ai_callable()
         async def dispatch_responder(
@@ -376,9 +206,15 @@ async def entrypoint(ctx: JobContext):
             ] = None,
             notes: Annotated[
                 Optional[str], llm.TypeInfo(description="Additional notes for the dispatch")
+            ] = None,
+            status: Annotated[
+                Optional[str], llm.TypeInfo(description="Dispatch status (for updates)")
+            ] = None,
+            arrival_time: Annotated[
+                Optional[str], llm.TypeInfo(description="Arrival time for ARRIVED status")
             ] = None
         ):
-            """Called to dispatch an appropriate responder to the emergency. Use after creating an emergency session."""
+            """Called to dispatch or update a responder for the emergency. Use after creating an emergency session."""
             nonlocal current_session_id
             
             # If session_id not provided, use the current session
@@ -386,52 +222,22 @@ async def entrypoint(ctx: JobContext):
                 session_id = current_session_id
                 logger.info(f"Using current session ID: {session_id} for dispatch")
             
-            result = await dispatch_responder(
+            # Convert arrival_time string to datetime if provided
+            arrival_datetime = None
+            if arrival_time:
+                try:
+                    arrival_datetime = datetime.fromisoformat(arrival_time)
+                except ValueError:
+                    logger.warning(f"Invalid arrival time format: {arrival_time}")
+            
+            result = await manage_dispatch(
                 session_id=session_id,
                 responder_id=responder_id,
                 emergency_type=emergency_type,
                 location_id=location_id,
-                notes=notes
-            )
-            return result
-        
-        @llm.ai_callable()
-        async def update_session_status(
-            self,
-            session_id: Annotated[
-                Optional[str], llm.TypeInfo(description="ID of the session to update")
-            ] = None,
-            status: Annotated[
-                Optional[str], llm.TypeInfo(description="New status of the session (ACTIVE, EMERGENCY_VERIFIED, DISPATCHED, COMPLETED, etc.)")
-            ] = None,
-            description: Annotated[
-                Optional[str], llm.TypeInfo(description="Updated description of the emergency")
-            ] = None,
-            priority_level: Annotated[
-                Optional[int], llm.TypeInfo(description="Updated priority level (1-5, where 1 is highest)")
-            ] = None,
-            notes: Annotated[
-                Optional[str], llm.TypeInfo(description="Additional response notes")
-            ] = None,
-            emergency_type: Annotated[
-                Optional[str], llm.TypeInfo(description="Updated emergency type")
-            ] = None
-        ):
-            """Called to update a session with new information. Use this to update session status or add information."""
-            nonlocal current_session_id
-            
-            # If session_id not provided, use the current session
-            if not session_id and current_session_id:
-                session_id = current_session_id
-                logger.info(f"Using current session ID: {session_id} for update")
-            
-            result = await update_session_status(
-                session_id=session_id,
-                status=status,
-                description=description,
-                priority_level=priority_level,
                 notes=notes,
-                emergency_type=emergency_type
+                status=status,
+                arrival_time=arrival_datetime
             )
             return result
 
@@ -520,37 +326,6 @@ async def entrypoint(ctx: JobContext):
         except Exception as e:
             logger.error(f"Error processing agent_stopped_speaking event: {str(e)}")
 
-    # Intercept the update_session_status function to handle session end
-    original_update_session_status = fnc_ctx.update_session_status
-    
-    async def update_session_status_wrapper(*args, **kwargs):
-        nonlocal current_session_id
-        result = await original_update_session_status(*args, **kwargs)
-        
-        # Get the session ID from the arguments or use the current one
-        session_id = kwargs.get('session_id', current_session_id)
-        
-        # If updating the current session and status is COMPLETED, DROPPED, or TRANSFERRED
-        if (session_id == current_session_id and 
-            kwargs.get('status') in ['COMPLETED', 'DROPPED', 'TRANSFERRED', 'NON_EMERGENCY']):
-            # Add a system message to mark the end of the session
-            system_message = f"Emergency session ended at {datetime.now().isoformat()} with status: {kwargs.get('status')}"
-            
-            # Create task for storing the system message
-            asyncio.create_task(
-                store_session_transcript(
-                    session_id=current_session_id,
-                    speaker_type="SYSTEM",
-                    content=system_message
-                )
-            )
-            logger.info(f"Created task to store end marker for session {current_session_id}")
-        
-        return result
-    
-    # Replace the original function with our wrapper
-    fnc_ctx.update_session_status = update_session_status_wrapper
-    
     agent.start(ctx.room, participant)
 
     # The agent should be polite and greet the user when it joins :)

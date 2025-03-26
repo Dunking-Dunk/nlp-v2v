@@ -7,43 +7,36 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Session as the primary entity for all call interactions
 model Session {
   id        String        @id @default(uuid())
-  // Call information
   startTime DateTime      @default(now())
   endTime   DateTime?
   status    SessionStatus @default(ACTIVE)
 
-  // Caller information
   phoneNumber String?
   callerId    String?
   caller      Caller? @relation(fields: [callerId], references: [id])
 
-  // Emergency details
   emergencyType EmergencyType?
   locationId    String?
   location      Location?      @relation(fields: [locationId], references: [id])
   description   String?
   priorityLevel Int?           @default(3) // 1-5, where 1 is highest priority
 
-  // Transcript and related info
   transcriptEntries SessionTranscript[]
   dispatches        Dispatch[]
 
-  // Additional fields
   responseNotes String?  @db.Text
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
-// Session transcript entries
 model SessionTranscript {
   id          String      @id @default(uuid())
   sessionId   String
   session     Session     @relation(fields: [sessionId], references: [id])
   timestamp   DateTime    @default(now())
-  speakerType SpeakerType // Identifies whether agent or caller is speaking
+  speakerType SpeakerType
   content     String      @db.Text
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -53,7 +46,7 @@ model Caller {
   id          String    @id @default(uuid())
   phoneNumber String?   @unique
   name        String?
-  language    String?   @default("Tamil") // Tamil, English, Hindi
+  language    String?   @default("Tamil") 
   sessions    Session[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
