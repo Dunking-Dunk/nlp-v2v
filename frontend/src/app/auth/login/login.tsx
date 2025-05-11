@@ -23,10 +23,10 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const { 
-    register, 
-    handleSubmit, 
-    formState: { errors } 
+  const {
+    register,
+    handleSubmit,
+    formState: { errors }
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema)
   });
@@ -36,7 +36,7 @@ export default function Login() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setError(null);
-    
+
     try {
       // Call the login mutation with form data
       mutate(data);

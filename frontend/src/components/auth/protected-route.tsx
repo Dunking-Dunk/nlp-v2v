@@ -10,7 +10,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, requireVerified = true }: ProtectedRouteProps) {
   const location = useLocation();
-  const { data: user, isPending }:{data:any, isPending:boolean} = useCurrentUser();
+  const { data: user, isPending }: { data: any, isPending: boolean } = useCurrentUser();
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export function PublicOnlyRoute({ children }: { children: ReactNode }) {
 
   // If user is authenticated, redirect to dashboard
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // If not authenticated, render the public route

@@ -2,14 +2,16 @@ import { Link, useLocation } from "react-router";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { 
-  LayoutDashboard, 
-  Settings, 
-  User, 
-  FileText, 
-  BarChart, 
-  Mail, 
-  X 
+import {
+  LayoutDashboard,
+  Settings,
+  User,
+  FileText,
+  BarChart,
+  Mail,
+  X,
+  Calendar,
+  Users
 } from "lucide-react";
 
 interface SidebarProps {
@@ -17,94 +19,103 @@ interface SidebarProps {
   onClose: () => void;
 }
 
+const navItems = [
+  {
+    title: "Dashboard",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Interviews",
+    href: "/interviews",
+    icon: Calendar,
+  },
+  {
+    title: "Candidates",
+    href: "/candidates",
+    icon: Users,
+  },
+  {
+    title: "Profile",
+    href: "/profile",
+    icon: User,
+  },
+  {
+    title: "Settings",
+    href: "/setting",
+    icon: Settings,
+  },
+];
+
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const location = useLocation();
-  
-  const routes = [
-    {
-      title: "Dashboard",
-      icon: <LayoutDashboard className="h-5 w-5" />,
-      href: "/dashboard",
-    },
-    {
-      title: "Profile",
-      icon: <User className="h-5 w-5" />,
-      href: "/profile",
-    },
-    {
-      title: "Documents",
-      icon: <FileText className="h-5 w-5" />,
-      href: "/documents",
-    },
-    {
-      title: "Analytics",
-      icon: <BarChart className="h-5 w-5" />,
-      href: "/analytics",
-    },
-    {
-      title: "Messages",
-      icon: <Mail className="h-5 w-5" />,
-      href: "/messages",
-    },
-    {
-      title: "Settings",
-      icon: <Settings className="h-5 w-5" />,
-      href: "/settings",
-    },
-  ];
+  const pathname = location.pathname;
+
+  const isActiveLink = (href: string) => {
+    if (href === '/dashboard' && pathname === '/') return true;
+    return pathname.startsWith(href);
+  };
 
   return (
     <>
       {/* Mobile overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden"
           onClick={onClose}
         />
       )}
-      
+
       {/* Sidebar */}
-      <div
+      <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-72 border-r bg-background transition-transform duration-300 md:translate-x-0",
-          isOpen ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r bg-background shadow-lg transition-transform lg:static",
+          isOpen ? "transform-none" : "-translate-x-full lg:transform-none"
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b px-4">
-          <Link to="/" className="flex items-center gap-2">
-            <span className="text-xl font-bold">App Name</span>
+        <div className="flex h-14 items-center border-b px-4 lg:h-16 lg:px-6">
+          <Link
+            to="/"
+            className="flex items-center gap-2 font-semibold"
+          >
+            <BarChart className="h-6 w-6" />
+            <span>Interview Manager</span>
           </Link>
-          <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden">
-            <X className="h-5 w-5" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-4 top-3 lg:hidden"
+            onClick={onClose}
+          >
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
           </Button>
         </div>
-        
-        <ScrollArea className="h-[calc(100vh-64px)]">
-          <div className="px-3 py-4">
-            <div className="space-y-1">
-              {routes.map((route) => (
+        <ScrollArea className="flex-1 px-3 py-4">
+          <nav className="flex flex-col gap-2">
+            {navItems.map((item) => {
+              const IconComponent = item.icon;
+              const isActive = isActiveLink(item.href);
+
+              return (
                 <Link
-                  key={route.href}
-                  to={route.href}
-                  onClick={() => {
-                    if (window.innerWidth < 768) {
-                      onClose();
-                    }
-                  }}
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
+                    isActive
+                      ? "bg-accent text-accent-foreground"
+                      : "hover:bg-accent/50 hover:text-accent-foreground"
+                  )}
                 >
-                  <Button
-                    variant={location.pathname === route.href ? "secondary" : "ghost"}
-                    className="w-full justify-start"
-                  >
-                    {route.icon}
-                    <span className="ml-2">{route.title}</span>
-                  </Button>
+                  <IconComponent className="h-5 w-5" />
+                  <span>{item.title}</span>
                 </Link>
-              ))}
-            </div>
-          </div>
+              );
+            })}
+          </nav>
         </ScrollArea>
-      </div>
+      </aside>
     </>
   );
 } 

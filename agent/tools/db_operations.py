@@ -1,88 +1,90 @@
 from typing import Optional, List
-from models.db_operations import CallerInput, LocationInput, SessionInput, ResponderInput, DispatchInput, EmergencyType, ResponderType, ResponderStatus, SessionStatus,DispatchStatus, SessionTranscriptInput
+from models.db_operations import CandidateInput, InterviewInput, InterviewStatus, InterviewTranscriptInput, UserInput
 
 from utils import execute_db_operation
 
-async def create_caller(data: CallerInput):
-    """Create a new caller in the database"""
+async def create_candidate(data: CandidateInput):
+    """Create a new candidate in the database"""
     async def operation(client, data):
-        return await client.caller.create(data=data.dict(exclude_none=True))
+        return await client.candidate.create(data=data.dict(exclude_none=True))
     
     return await execute_db_operation(operation, data)
 
-async def create_location(data: LocationInput):
+async def create_interview(data: InterviewInput):
+    """Create a new interview in the database"""
     async def operation(client, data):
-        return await client.location.create(data=data.dict(exclude_none=True))
+        return await client.interview.create(data=data.dict(exclude_none=True))
     
     return await execute_db_operation(operation, data)
 
-async def create_session(data: SessionInput):
+async def create_interview_transcript(data: InterviewTranscriptInput):
+    """Create a new interview transcript entry in the database"""
     async def operation(client, data):
-        return await client.session.create(data=data.dict(exclude_none=True))
+        return await client.interviewtranscript.create(data=data.dict(exclude_none=True))
     
     return await execute_db_operation(operation, data)
 
-async def create_session_transcript(data: SessionTranscriptInput):
+async def create_user(data: UserInput):
+    """Create a new user in the database"""
     async def operation(client, data):
-        return await client.sessiontranscript.create(data=data.dict(exclude_none=True))
+        return await client.user.create(data=data.dict(exclude_none=True))
     
     return await execute_db_operation(operation, data)
 
-async def create_responder(data: ResponderInput):
-    async def operation(client, data):
-        return await client.responder.create(data=data.dict(exclude_none=True))
-    
-    return await execute_db_operation(operation, data)
-
-async def create_dispatch(data: DispatchInput):
-    async def operation(client, data):
-        return await client.dispatch.create(data=data.dict(exclude_none=True))
-    
-    return await execute_db_operation(operation, data)
-
-async def update_session(session_id: str, data: dict):
-    async def operation(client, session_id, data):
-        return await client.session.update(
-            where={"id": session_id},
+async def update_interview(interview_id: str, data: dict):
+    """Update an existing interview in the database"""
+    async def operation(client, interview_id, data):
+        return await client.interview.update(
+            where={"id": interview_id},
             data=data
         )
     
-    return await execute_db_operation(operation, session_id, data)
+    return await execute_db_operation(operation, interview_id, data)
 
-async def find_available_responders(emergency_type: EmergencyType, location_id: Optional[str] = None):
-    async def operation(client, emergency_type, location_id):
-        responder_type = None
-        
-        if emergency_type == EmergencyType.MEDICAL:
-            responder_type = ResponderType.AMBULANCE
-        elif emergency_type == EmergencyType.POLICE:
-            responder_type = ResponderType.POLICE
-        elif emergency_type == EmergencyType.FIRE:
-            responder_type = ResponderType.FIRE
-        
-        if not responder_type:
-            return []
-        
-        query = {
-            "where": {
-                "responderType": responder_type,
-                "status": ResponderStatus.AVAILABLE
-            }
-        }
-        
-        if location_id:
-            query["where"]["locationId"] = location_id
-            
-        return await client.responder.find_many(**query)
-    
-    return await execute_db_operation(operation, emergency_type, location_id) 
-
-async def update_dispatch(dispatch_id:str, data:dict):
-
-    async def operation(client, dispatch_id, data):
-        return await client.dispatch.update(
-            where={"id": dispatch_id},
+async def update_candidate(candidate_id: str, data: dict):
+    """Update an existing candidate in the database"""
+    async def operation(client, candidate_id, data):
+        return await client.candidate.update(
+            where={"id": candidate_id},
             data=data
         )
     
-    return await execute_db_operation(operation,dispatch_id, data)
+    return await execute_db_operation(operation, candidate_id, data)
+
+async def get_user_by_email(email: str):
+    """Get a user by email"""
+    async def operation(client, email):
+        return await client.user.find_unique(where={"email": email})
+    
+    return await execute_db_operation(operation, email)
+
+async def get_candidate_by_email(email: str):
+    """Get a candidate by email"""
+    async def operation(client, email):
+        return await client.candidate.find_unique(where={"email": email})
+    
+    return await execute_db_operation(operation, email)
+
+async def get_candidate_by_phone(phone: str):
+    """Get a candidate by phone number"""
+    async def operation(client, phone):
+        return await client.candidate.find_unique(where={"phone": phone})
+    
+    return await execute_db_operation(operation, phone)
+
+async def get_interview_by_id(interview_id: str):
+    """Get an interview by ID"""
+    async def operation(client, interview_id):
+        return await client.interview.find_unique(where={"id": interview_id})
+    
+    return await execute_db_operation(operation, interview_id)
+
+async def get_interview_transcripts(interview_id: str):
+    """Get all transcript entries for an interview"""
+    async def operation(client, interview_id):
+        return await client.interviewtranscript.find_many(
+            where={"interviewId": interview_id},
+            order_by={"timestamp": "asc"}
+        )
+    
+    return await execute_db_operation(operation, interview_id)

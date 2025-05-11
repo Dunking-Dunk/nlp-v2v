@@ -9,3 +9,7 @@ fastapi>=0.95.0
 uvicorn>=0.22.0
 pydantic>=2.0.0
 prisma>=0.9.0
+python-socketio[asyncio]>=5.8.0
+
+# Set WEBSOCKET_URL environment variable to match backend-express config
+# e.g., WEBSOCKET_URL=http://localhost:5000

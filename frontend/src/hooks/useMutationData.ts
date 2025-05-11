@@ -7,9 +7,15 @@ import {
 } from '@tanstack/react-query'
 import { toast } from 'sonner'
 
-export const useMutationData = (
+// Define a response type with status and data
+interface ResponseWithStatus {
+    status?: number;
+    data?: string;
+}
+
+export const useMutationData = <TVariables = any, TData extends ResponseWithStatus = ResponseWithStatus>(
     mutationKey: MutationKey,
-    mutationFn: MutationFunction<any, any>,
+    mutationFn: MutationFunction<TData, TVariables>,
     queryKey?: string | string[] | string[][],
     onSuccess?: () => void
 ) => {
@@ -18,49 +24,66 @@ export const useMutationData = (
         mutationKey,
         mutationFn,
         onSuccess(data) {
-            if (onSuccess) onSuccess()
-            return toast(
-                    data?.status === 200 || data?.status === 201 ? 'Success' : 'Error',
-                    {
-                        description: data?.data,
-                    }
+            // Invalidate queries before calling onSuccess
+            invalidateQueries();
+
+            // Then call onSuccess if provided
+            if (onSuccess) onSuccess();
+
+            // Show toast notification
+            toast(
+                data?.status === 200 || data?.status === 201 ? 'Success' : 'Error',
+                {
+                    description: data?.data,
+                }
             )
         },
-        onSettled: async () => {
+        onError(error) {
+            console.error("Mutation error:", error);
+            toast('Error', {
+                description: error instanceof Error ? error.message : 'An unknown error occurred'
+            });
+        }
+    });
+
+    // Function to invalidate queries
+    const invalidateQueries = async () => {
+        if (!queryKey) return;
+
+        try {
             if (typeof queryKey === 'string') {
-                return await client.invalidateQueries({
+                await client.invalidateQueries({
                     queryKey: [queryKey],
-                    exact: true,
-                })
-            }
-            else {
-                if (Array.isArray(queryKey) && Array.isArray(queryKey[0])) {
-                    for (let i of queryKey) {
+                });
+            } else if (Array.isArray(queryKey)) {
+                if (Array.isArray(queryKey[0])) {
+                    // Handle array of arrays case
+                    for (const key of queryKey) {
                         await client.invalidateQueries({
-                            queryKey: i as string[],
-                            exact: true,
-                        })
+                            queryKey: key as string[],
+                        });
                     }
                 } else {
+                    // Handle simple array case
                     await client.invalidateQueries({
-                        queryKey: queryKey,
-                        exact: true,
-                    })
+                        queryKey: queryKey as string[],
+                    });
                 }
-                return {}
             }
+        } catch (err) {
+            console.error("Error invalidating queries:", err);
         }
-    })
+    };
 
     return { mutate, isPending }
 }
 
-export const useMutationDataState = (mutationKey: MutationKey) => {
+export const useMutationDataState = <TVariables = any>(mutationKey: MutationKey) => {
     const data = useMutationState({
         filters: { mutationKey },
         select: (mutation) => {
             return {
-                variables: mutation.state.variables as any,
+                variables: mutation.state.variables as TVariables,
                 status: mutation.state.status,
             }
         },

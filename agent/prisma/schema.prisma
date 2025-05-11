@@ -7,34 +7,70 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Session {
-  id        String        @id @default(uuid())
-  startTime DateTime      @default(now())
-  endTime   DateTime?
-  status    SessionStatus @default(ACTIVE)
-
-  phoneNumber String?
-  callerId    String?
-  caller      Caller? @relation(fields: [callerId], references: [id])
-
-  emergencyType EmergencyType?
-  locationId    String?
-  location      Location?      @relation(fields: [locationId], references: [id])
-  description   String?
-  priorityLevel Int?           @default(3) // 1-5, where 1 is highest priority
-
-  transcriptEntries SessionTranscript[]
-  dispatches        Dispatch[]
-
-  responseNotes String?  @db.Text
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model User {
+  id                   String              @id @default(uuid())
+  email                String              @unique
+  password             String
+  name                 String?
+  isAdmin              Boolean             @default(false)
+  isVerified           Boolean             @default(false)
+  resetPasswordToken   String?
+  resetPasswordExpires DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  verificationTokens   VerificationToken[]
 }
 
-model SessionTranscript {
+// Separate model for verification tokens with expiration
+model VerificationToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Interview {
+  id        String          @id @default(uuid())
+  startTime DateTime        @default(now())
+  endTime   DateTime?
+  status    InterviewStatus @default(ACTIVE)
+
+  candidateId String?
+  candidate   Candidate? @relation(fields: [candidateId], references: [id])
+
+  position     String?
+  department   String?
+  level        String? @default("ENTRY")
+  description  String?
+  feedback     String? @db.Text
+  overallScore Int?    @default(0) // 0-100 scale
+
+  // Detailed evaluation scores
+  technicalSkillScore      Int? @default(0) // 0-100 scale
+  problemSolvingScore      Int? @default(0) // 0-100 scale
+  communicationScore       Int? @default(0) // 0-100 scale
+  attitudeScore            Int? @default(0) // 0-100 scale
+  experienceRelevanceScore Int? @default(0) // 0-100 scale
+
+  // Detailed evaluation notes
+  strengthsNotes        String? @db.Text
+  improvementAreasNotes String? @db.Text
+  technicalFeedback     String? @db.Text
+  culturalFitNotes      String? @db.Text
+  recommendationNotes   String? @db.Text
+
+  transcriptEntries InterviewTranscript[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model InterviewTranscript {
   id          String      @id @default(uuid())
-  sessionId   String
-  session     Session     @relation(fields: [sessionId], references: [id])
+  interviewId String
+  interview   Interview   @relation(fields: [interviewId], references: [id])
   timestamp   DateTime    @default(now())
   speakerType SpeakerType
   content     String      @db.Text
@@ -42,102 +78,52 @@ model SessionTranscript {
   updatedAt   DateTime    @updatedAt
 }
 
-model Caller {
-  id          String    @id @default(uuid())
-  phoneNumber String?   @unique
-  name        String?
-  language    String?   @default("Tamil") 
-  sessions    Session[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-model Location {
-  id             String      @id @default(uuid())
-  address        String?
-  landmark       String?
-  gpsCoordinates String?
-  city           String?
-  district       String?
-  sessions       Session[]
-  responders     Responder[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
-}
-
-model Responder {
-  id            String          @id @default(uuid())
-  responderType ResponderType
-  identifier    String // Vehicle number or badge ID
-  status        ResponderStatus @default(AVAILABLE)
-  locationId    String?
-  location      Location?       @relation(fields: [locationId], references: [id])
-  dispatches    Dispatch[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
-}
-
-model Dispatch {
-  id           String         @id @default(uuid())
-  sessionId    String
-  session      Session        @relation(fields: [sessionId], references: [id])
-  responderId  String
-  responder    Responder      @relation(fields: [responderId], references: [id])
-  dispatchTime DateTime       @default(now())
-  arrivalTime  DateTime?
-  status       DispatchStatus @default(DISPATCHED)
-  notes        String?        @db.Text
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-
-  @@unique([sessionId, responderId])
+model Candidate {
+  id         String      @id @default(uuid())
+  email      String?     @unique
+  phone      String?     @unique
+  name       String?
+  resume     String?     @db.Text
+  experience String?
+  skills     String?     @db.Text
+  education  String?     @db.Text
+  interviews Interview[]
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
 }
 
 // Enums
-enum SessionStatus {
+enum InterviewStatus {
   ACTIVE
-  EMERGENCY_VERIFIED
-  DISPATCHED
-  COMPLETED
-  DROPPED
-  TRANSFERRED
-  NON_EMERGENCY
-}
-
-enum EmergencyType {
-  MEDICAL
-  POLICE
-  FIRE
-  OTHER
-}
-
-enum ResponderType {
-  AMBULANCE
-  POLICE
-  FIRE
-  OTHER
-}
-
-enum ResponderStatus {
-  AVAILABLE
-  DISPATCHED
-  ON_ROUTE
-  ON_SCENE
-  RETURNING
-  OUT_OF_SERVICE
-}
-
-enum DispatchStatus {
-  DISPATCHED
-  EN_ROUTE
-  ARRIVED
   COMPLETED
   CANCELLED
+  PENDING_REVIEW
+}
+
+enum JobLevel {
+  ENTRY
+  MID
+  SENIOR
+  LEAD
+  MANAGER
+  EXECUTIVE
+}
+
+enum DepartmentType {
+  ENGINEERING
+  PRODUCT
+  DESIGN
+  MARKETING
+  SALES
+  SUPPORT
+  HR
+  FINANCE
+  OPERATIONS
 }
 
 // Speaker types for transcript entries
 enum SpeakerType {
   AGENT
-  CALLER
+  CANDIDATE
   SYSTEM
 }

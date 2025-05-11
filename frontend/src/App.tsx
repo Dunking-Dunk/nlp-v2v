@@ -8,6 +8,8 @@ import Dashboard from './app/main/page'
 import AuthLayout from './app/auth/layout'
 import VerifyEmail from './app/auth/verify/page'
 import VerifyRequired from './app/auth/verify-required/page'
+import ResetPassword from './app/auth/reset-password/page'
+import ForgotPassword from './app/auth/forgot-password/page'
 import { ProtectedRoute, PublicOnlyRoute } from './components/auth/protected-route'
 import DashboardLayout from './app/main/layout'
 
@@ -15,10 +17,7 @@ function App() {
   return (
     <MainLayout>
       <Routes>
-        {/* Public routes */}
-        <Route path="/landing" element={<Landing />} />
-        
-        {/* Auth routes (only accessible if NOT logged in) */}
+        {/* Auth routes */}
         <Route path="/auth" element={<AuthLayout />}>
           <Route path="login" element={
             <PublicOnlyRoute>
@@ -32,25 +31,25 @@ function App() {
           } />
           <Route path="verify" element={<VerifyEmail />} />
           <Route path="verify-required" element={<VerifyRequired />} />
+          <Route path="reset-password" element={<ResetPassword />} />
+          <Route path="forgot-password" element={<ForgotPassword />} />
         </Route>
-        
+
         {/* Protected routes (require authentication) */}
-        <Route element={<DashboardLayout/>}>
         <Route path="/*" element={
           <ProtectedRoute>
-            <Dashboard />
+            <DashboardLayout>
+              <Dashboard />
+            </DashboardLayout>
           </ProtectedRoute>
         } />
-        </Route>
-      
-        
+
         {/* 404 route */}
-        <Route path="*" element={<PageNotFound/>} />
+        <Route path="*" element={<PageNotFound />} />
       </Routes>
     </MainLayout>
   )
 }
 
 export default App
- 
- 
+

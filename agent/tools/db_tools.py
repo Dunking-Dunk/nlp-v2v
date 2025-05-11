@@ -1,244 +1,299 @@
 import logging
 from typing import Optional, Dict, Any
 import datetime
+import asyncio
 
 from .db_operations import (
-    create_caller,
-    create_location,
-    create_session,
-    create_dispatch,
-    update_session,
-    update_dispatch,
-    find_available_responders,
-    create_session_transcript
+    create_candidate,
+    create_interview,
+    create_interview_transcript,
+    update_interview,
+    update_candidate,
+    get_candidate_by_email,
+    get_candidate_by_phone,
+    get_interview_by_id,
+    get_interview_transcripts
 )
 
-from models.db_operations import SessionTranscriptInput, CallerInput, LocationInput, SessionInput, DispatchInput, EmergencyType, SessionStatus, DispatchStatus,SessionTranscriptInput
+from models.db_operations import InterviewInput, CandidateInput, InterviewTranscriptInput, InterviewStatus, SpeakerType
 
+# Import socket client for real-time updates
+from .socket_client import send_transcript_update, send_evaluation_update, join_interview_room
 
 logger = logging.getLogger("db-tools")
 
-async def create_or_update_session(
-    session_id: Optional[str] = None,
-    emergency_type: Optional[str] = None,
+async def create_or_update_interview(
+    interview_id: Optional[str] = None,
+    position: Optional[str] = None,
+    department: Optional[str] = None,
+    level: Optional[str] = None,
     description: Optional[str] = None,
-    caller_phone: Optional[str] = None,
-    caller_name: Optional[str] = None,
-    language: Optional[str] = None,
-    address: Optional[str] = None,
-    landmark: Optional[str] = None,
-    gps_coordinates: Optional[str] = None,
-    city: Optional[str] = None,
-    district: Optional[str] = None,
-    priority_level: Optional[int] = 3,
-    notes: Optional[str] = None,
-    status: Optional[SessionStatus] = None
+    candidate_name: Optional[str] = None,
+    candidate_email: Optional[str] = None,
+    candidate_phone: Optional[str] = None,
+    candidate_experience: Optional[str] = None,
+    candidate_education: Optional[str] = None,
+    candidate_skills: Optional[str] = None,
+    candidate_resume: Optional[str] = None,
+    feedback: Optional[str] = None,
+    overall_score: Optional[int] = None,
+    status: Optional[InterviewStatus] = None
 ) -> Dict[str, Any]:
     """
-    Create or update an emergency session with all possible details.
-    This is the main entry point for managing emergency sessions.
+    Create or update an interview session with all possible details.
+    This is the main entry point for managing interview sessions.
     
     Args:
-        session_id: ID of existing session to update (optional)
-        emergency_type: Type of emergency (MEDICAL, POLICE, FIRE, OTHER)
-        description: Description of the emergency
-        caller_phone: Phone number of the caller
-        caller_name: Name of the caller
-        language: Preferred language of the caller (defaults to Tamil)
-        address: Address of the emergency
-        landmark: Nearby landmark
-        gps_coordinates: GPS coordinates (lat,long)
-        city: City name
-        district: District name
-        priority_level: Priority level (1-5, where 1 is highest)
-        notes: Additional notes about the emergency
-        status: Session status (for updates)
+        interview_id: ID of existing interview to update (optional)
+        position: Job position being interviewed for
+        department: Department of the position
+        level: Job level (ENTRY, MID, SENIOR, LEAD, MANAGER, EXECUTIVE)
+        description: Description of the position or interview
+        candidate_name: Name of the candidate
+        candidate_email: Email of the candidate
+        candidate_phone: Phone number of the candidate
+        candidate_experience: Work experience of the candidate
+        candidate_education: Education details of the candidate
+        candidate_skills: Skills of the candidate
+        candidate_resume: Resume text of the candidate
+        feedback: Interview feedback
+        overall_score: Overall interview score (0-100)
+        status: Interview status
         
     Returns:
-        Dictionary with created/updated session details including caller and location information
+        Dictionary with created/updated interview details including candidate information
     """
     try:
-        caller_id = None
-        if caller_phone:
-            caller_data = CallerInput(
-                phoneNumber=caller_phone,
-                name=caller_name,
-                language=language
-            )
-            caller = await create_caller(caller_data)
-            if caller:
-                caller_id = caller.id
-                logger.info(f"Created/Updated caller with ID: {caller_id}")
+        candidate_id = None
+        
+        # First check if candidate exists by email or phone
+        existing_candidate = None
+        if candidate_email:
+            existing_candidate = await get_candidate_by_email(candidate_email)
+        
+        if not existing_candidate and candidate_phone:
+            existing_candidate = await get_candidate_by_phone(candidate_phone)
             
-        location_id = None
-        if any([address, landmark, gps_coordinates, city, district]):
-            location_data = LocationInput(
-                address=address,
-                landmark=landmark,
-                gpsCoordinates=gps_coordinates,
-                city=city,
-                district=district
-            )
-            location = await create_location(location_data)
-            if location:
-                location_id = location.id
-                logger.info(f"Created/Updated location with ID: {location_id}")
+        if existing_candidate:
+            candidate_id = existing_candidate.id
+            
+            # Update candidate with any new information
+            candidate_update_data = {}
+            if candidate_name and not existing_candidate.name:
+                candidate_update_data["name"] = candidate_name
+            if candidate_resume and not existing_candidate.resume:
+                candidate_update_data["resume"] = candidate_resume
+            if candidate_experience and not existing_candidate.experience:
+                candidate_update_data["experience"] = candidate_experience
+            if candidate_education and not existing_candidate.education:
+                candidate_update_data["education"] = candidate_education
+            if candidate_skills and not existing_candidate.skills:
+                candidate_update_data["skills"] = candidate_skills
+                
+            if candidate_update_data:
+                await update_candidate(candidate_id, candidate_update_data)
+                logger.info(f"Updated candidate with ID: {candidate_id}")
+        else:
+            # Create new candidate
+            if any([candidate_name, candidate_email, candidate_phone, candidate_experience, 
+                   candidate_education, candidate_skills, candidate_resume]):
+                candidate_data = CandidateInput(
+                    name=candidate_name,
+                    email=candidate_email,
+                    phone=candidate_phone,
+                    experience=candidate_experience,
+                    education=candidate_education,
+                    skills=candidate_skills,
+                    resume=candidate_resume
+                )
+                candidate = await create_candidate(candidate_data)
+                if candidate:
+                    candidate_id = candidate.id
+                    logger.info(f"Created candidate with ID: {candidate_id}")
         
-        # Convert emergency type to enum
-        emergency_type_enum = None
-        if emergency_type:
-            try:
-                emergency_type_enum = EmergencyType(emergency_type.upper())
-            except ValueError:
-                emergency_type_enum = EmergencyType.OTHER
-                logger.warning(f"Invalid emergency type: {emergency_type}, defaulting to OTHER")
-        
-        # Prepare session data
-        session_data = SessionInput(
-            callerId=caller_id,
-            phoneNumber=caller_phone,  
-            emergencyType=emergency_type_enum,
-            locationId=location_id,
+        # Prepare interview data
+        interview_data = InterviewInput(
+            candidateId=candidate_id,
+            position=position,
+            department=department,
+            level=level,
             description=description,
-            priorityLevel=priority_level,
-            responseNotes=notes,
+            feedback=feedback,
+            overallScore=overall_score,
             status=status
         )
         
-        if session_id:
-            # Update existing session
-            session = await update_session(session_id, session_data.dict(exclude_none=True))
-            if not session:
-                logger.error(f"Failed to update emergency session {session_id}")
-                return {"success": False, "error": "Failed to update emergency session"}
-            logger.info(f"Updated emergency session with ID: {session_id}")
+        if interview_id:
+            # Update existing interview
+            interview = await update_interview(interview_id, interview_data.dict(exclude_none=True))
+            if not interview:
+                logger.error(f"Failed to update interview {interview_id}")
+                return {"success": False, "error": "Failed to update interview session"}
+            logger.info(f"Updated interview with ID: {interview_id}")
         else:
-            # Create new session
-            session = await create_session(session_data)
-            if not session:
-                logger.error("Failed to create emergency session")
-                return {"success": False, "error": "Failed to create emergency session"}
-            logger.info(f"Created emergency session with ID: {session.id}")
+            # Create new interview
+            interview = await create_interview(interview_data)
+            if not interview:
+                logger.error("Failed to create interview")
+                return {"success": False, "error": "Failed to create interview session"}
+            logger.info(f"Created interview with ID: {interview.id}")
+            interview_id = interview.id
         
         return {
             "success": True,
-            "session_id": session.id,
-            "caller_id": caller_id,
-            "location_id": location_id,
-            "emergency_type": emergency_type_enum.value if emergency_type_enum else None,
-            "timestamp": session.updatedAt.isoformat() if session_id else session.createdAt.isoformat()
+            "interview_id": interview_id,
+            "candidate_id": candidate_id,
+            "position": position,
+            "level": level,
+            "department": department,
+            "timestamp": datetime.datetime.now().isoformat()
         }
         
     except Exception as e:
-        logger.error(f"Error managing emergency session: {str(e)}")
+        logger.error(f"Error managing interview session: {str(e)}")
         return {"success": False, "error": str(e)}
 
 
-async def manage_dispatch(
-    session_id: str,
-    dispatch_id: Optional[str] = None,
-    responder_id: Optional[str] = None,
-    emergency_type: Optional[str] = None,
-    location_id: Optional[str] = None,
-    notes: Optional[str] = None,
-    status: Optional[DispatchStatus] = None,
-    arrival_time: Optional[datetime.datetime] = None
+async def update_interview_feedback(
+    interview_id: str,
+    feedback: Optional[str] = None,
+    overall_score: Optional[int] = None,
+    status: Optional[InterviewStatus] = None,
+    # New detailed evaluation parameters
+    technical_skill_score: Optional[int] = None,
+    problem_solving_score: Optional[int] = None,
+    communication_score: Optional[int] = None,
+    attitude_score: Optional[int] = None,
+    experience_relevance_score: Optional[int] = None,
+    strengths_notes: Optional[str] = None,
+    improvement_areas_notes: Optional[str] = None,
+    technical_feedback: Optional[str] = None,
+    cultural_fit_notes: Optional[str] = None,
+    recommendation_notes: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Create or update a dispatch for an emergency session.
-    If responder_id is not provided, it will find an available responder based on emergency type.
+    Update interview feedback and status with detailed evaluation.
     
     Args:
-        session_id: ID of the emergency session
-        dispatch_id: ID of existing dispatch to update (optional)
-        responder_id: ID of the responder to dispatch (optional)
-        emergency_type: Type of emergency if responder needs to be found (MEDICAL, POLICE, FIRE, OTHER)
-        location_id: Location ID to find nearby responders (optional)
-        notes: Additional notes for the dispatch
-        status: New status for the dispatch (for updates)
-        arrival_time: Arrival time for ARRIVED status
+        interview_id: ID of the interview to update
+        feedback: Overall interview feedback text
+        overall_score: Overall interview score (0-100)
+        status: Interview status
+        technical_skill_score: Score for technical skills (0-100)
+        problem_solving_score: Score for problem-solving abilities (0-100)
+        communication_score: Score for communication skills (0-100)
+        attitude_score: Score for attitude and cultural fit (0-100)
+        experience_relevance_score: Score for relevance of past experience (0-100)
+        strengths_notes: Notes about candidate's key strengths
+        improvement_areas_notes: Notes about areas for improvement
+        technical_feedback: Detailed feedback on technical aspects
+        cultural_fit_notes: Assessment of cultural fit
+        recommendation_notes: Recommendations for next steps
         
     Returns:
-        Dictionary with dispatch information
+        Dictionary with updated interview details
     """
     try:
-        if not responder_id and emergency_type:
-            try:
-                emergency_type_enum = EmergencyType(emergency_type.upper())
-            except ValueError:
-                emergency_type_enum = EmergencyType.OTHER
-                logger.warning(f"Invalid emergency type: {emergency_type}, defaulting to OTHER")
-                
-            available_responders = await find_available_responders(emergency_type_enum, location_id)
+        # Validate interview exists
+        interview = await get_interview_by_id(interview_id)
+        if not interview:
+            logger.error(f"Interview not found: {interview_id}")
+            return {"success": False, "error": "Interview not found"}
+        
+        # Prepare update data
+        update_data = {}
+        if feedback is not None:
+            update_data["feedback"] = feedback
+        if overall_score is not None:
+            update_data["overallScore"] = overall_score
+        if status is not None:
+            update_data["status"] = status
             
-            if not available_responders or len(available_responders) == 0:
-                logger.error(f"No available responders found for emergency type: {emergency_type}")
-                return {"success": False, "error": "No available responders found"}
-
-            responder_id = available_responders[0].id
-            logger.info(f"Found available responder: {responder_id}")
-        
-        if not responder_id and not dispatch_id:
-            logger.error("No responder ID provided and no available responders found")
-            return {"success": False, "error": "No responder ID provided"}
-
-        dispatch_data = DispatchInput(
-            sessionId=session_id,
-            responderId=responder_id,
-            notes=notes,
-            status=status,
-            arrivalTime=arrival_time
-        )
-        
-        if dispatch_id:
-            # Update existing dispatch
-            dispatch = await update_dispatch(dispatch_id, dispatch_data.dict(exclude_none=True))
-            if not dispatch:
-                logger.error(f"Failed to update dispatch {dispatch_id}")
-                return {"success": False, "error": "Failed to update dispatch"}
-            logger.info(f"Updated dispatch with ID: {dispatch_id}")
-        else:
-            # Create new dispatch
-            dispatch = await create_dispatch(dispatch_data)
-            if not dispatch:
-                logger.error("Failed to create dispatch")
-                return {"success": False, "error": "Failed to create dispatch"}
-            logger.info(f"Created dispatch with ID: {dispatch.id}")
+        # Add detailed evaluation parameters
+        if technical_skill_score is not None:
+            update_data["technicalSkillScore"] = technical_skill_score
+        if problem_solving_score is not None:
+            update_data["problemSolvingScore"] = problem_solving_score
+        if communication_score is not None:
+            update_data["communicationScore"] = communication_score
+        if attitude_score is not None:
+            update_data["attitudeScore"] = attitude_score
+        if experience_relevance_score is not None:
+            update_data["experienceRelevanceScore"] = experience_relevance_score
             
-            # Update session status to DISPATCHED for new dispatches
-            await update_session(session_id, {"status": SessionStatus.DISPATCHED})
+        # Add detailed feedback text fields
+        if strengths_notes is not None:
+            update_data["strengthsNotes"] = strengths_notes
+        if improvement_areas_notes is not None:
+            update_data["improvementAreasNotes"] = improvement_areas_notes
+        if technical_feedback is not None:
+            update_data["technicalFeedback"] = technical_feedback
+        if cultural_fit_notes is not None:
+            update_data["culturalFitNotes"] = cultural_fit_notes
+        if recommendation_notes is not None:
+            update_data["recommendationNotes"] = recommendation_notes
+            
+        # Update interview
+        updated_interview = await update_interview(interview_id, update_data)
+        if not updated_interview:
+            logger.error(f"Failed to update interview feedback: {interview_id}")
+            return {"success": False, "error": "Failed to update interview feedback"}
         
+        # Send real-time evaluation update
+        asyncio.create_task(send_evaluation_update(interview_id, update_data))
+            
         return {
             "success": True,
-            "dispatch_id": dispatch.id,
-            "session_id": session_id,
-            "responder_id": responder_id,
-            "timestamp": dispatch.updatedAt.isoformat() if dispatch_id else dispatch.dispatchTime.isoformat(),
-            "status": dispatch.status
+            "interview_id": interview_id,
+            "status": updated_interview.status,
+            "overall_score": updated_interview.overallScore,
+            "timestamp": datetime.datetime.now().isoformat()
         }
         
     except Exception as e:
-        logger.error(f"Error managing dispatch: {str(e)}")
+        logger.error(f"Error updating interview feedback: {str(e)}")
         return {"success": False, "error": str(e)}
 
 
-async def store_session_transcript(session_id: str, speaker_type: str, content: str):
+async def store_interview_transcript(interview_id: str, speaker_type: str, content: str):
     """
-    Store a new session transcript entry in the database.
+    Store a new interview transcript entry in the database and send real-time update.
     
     Args:
-        session_id: ID of the session
-        speaker_type: Type of speaker (AGENT, CALLER, SYSTEM)
+        interview_id: ID of the interview
+        speaker_type: Type of speaker (AGENT, CANDIDATE, SYSTEM)
         content: Content of the message
     
     Returns:
         The created transcript entry
     """
     try:
-        session_transcript_data = SessionTranscriptInput(session_id, speaker_type, content)
-        result = await create_session_transcript(session_transcript_data)
-        logger.info(f"Created transcript entry for session {session_id}")
+        # Create transcript data
+        interview_transcript_data = InterviewTranscriptInput(
+            interviewId=interview_id,
+            speakerType=speaker_type,
+            content=content
+        )
+        
+        # Store in database
+        result = await create_interview_transcript(interview_transcript_data)
+        if not result:
+            logger.error(f"Failed to create transcript entry for interview {interview_id}")
+            return None
+            
+        logger.info(f"Created transcript entry for interview {interview_id}")
+        
+        # Send real-time update via WebSocket
+        transcript_data = {
+            'speakerType': speaker_type,
+            'content': content,
+            'timestamp': datetime.datetime.now().isoformat()
+        }
+        
+        # Send update in a non-blocking way
+        asyncio.create_task(send_transcript_update(interview_id, transcript_data))
+        
         return result
     except Exception as e:
-        logger.error(f"Error storing session transcript: {str(e)}")
+        logger.error(f"Error storing interview transcript: {str(e)}")
         return None

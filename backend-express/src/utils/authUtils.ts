@@ -1,28 +1,22 @@
 import jwt from 'jsonwebtoken';
 import * as CryptoJS from 'crypto-js';
 import { randomBytes } from 'crypto';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
-
-// JWT secret from environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
+import { config } from '../config';
 
 // Default verification token expiration (24 hours)
 export const VERIFICATION_TOKEN_EXPIRES_IN_HOURS = 24;
 
 interface TokenPayload {
-  id: number;
+  id: string;
 }
 
 /**
  * Generate a JWT token for a user
  */
-export const generateToken = (userId: number): string => {
+export const generateToken = (userId: string): string => {
   // Use alternative approach with ignoring TypeScript for the JWT options
   const payload = { id: userId };
-  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+  const token = jwt.sign(payload, config.jwtSecret, { expiresIn: config.jwtExpiresIn });
   return token;
 };
 
@@ -31,7 +25,7 @@ export const generateToken = (userId: number): string => {
  */
 export const verifyToken = (token: string): TokenPayload => {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, config.jwtSecret);
     return decoded as TokenPayload;
   } catch (error) {
     throw new Error('Invalid or expired token');

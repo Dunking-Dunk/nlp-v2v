@@ -9,11 +9,11 @@ import { User } from "@/types/index.types";
 const Profile = () => {
     const { data: user, isPending } = useCurrentUser();
     const navigate = useNavigate();
-    
+
     const typedUser = user as User | null;
-    
+
     const isValidUser = (user: any): user is User => {
-        return user && typeof user.id === 'number';
+        return user && typeof user.id === 'string';
     };
 
     if (isPending) {
@@ -131,8 +131,8 @@ const Profile = () => {
                         </div>
 
                         <div className="border-t pt-6">
-                            <Button 
-                                variant="outline" 
+                            <Button
+                                variant="outline"
                                 onClick={() => navigate("/setting")}
                                 className="mr-2"
                             >

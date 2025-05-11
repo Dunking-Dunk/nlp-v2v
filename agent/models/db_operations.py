@@ -3,82 +3,81 @@ from enum import Enum
 from pydantic import BaseModel, Field
 from typing import Optional
 
-class SessionStatus(str, Enum):
+class InterviewStatus(str, Enum):
     ACTIVE = "ACTIVE"
-    EMERGENCY_VERIFIED = "EMERGENCY_VERIFIED"
-    DISPATCHED = "DISPATCHED"
-    COMPLETED = "COMPLETED"
-    DROPPED = "DROPPED"
-    TRANSFERRED = "TRANSFERRED"
-    NON_EMERGENCY = "NON_EMERGENCY"
-
-class EmergencyType(str, Enum):
-    MEDICAL = "MEDICAL"
-    POLICE = "POLICE"
-    FIRE = "FIRE"
-    OTHER = "OTHER"
-
-class ResponderType(str, Enum):
-    AMBULANCE = "AMBULANCE"
-    POLICE = "POLICE"
-    FIRE = "FIRE"
-    OTHER = "OTHER"
-
-class ResponderStatus(str, Enum):
-    AVAILABLE = "AVAILABLE"
-    DISPATCHED = "DISPATCHED"
-    ON_ROUTE = "ON_ROUTE"
-    ON_SCENE = "ON_SCENE"
-    RETURNING = "RETURNING"
-    OUT_OF_SERVICE = "OUT_OF_SERVICE"
-
-class DispatchStatus(str, Enum):
-    DISPATCHED = "DISPATCHED"
-    EN_ROUTE = "EN_ROUTE"
-    ARRIVED = "ARRIVED"
     COMPLETED = "COMPLETED"
     CANCELLED = "CANCELLED"
+    PENDING_REVIEW = "PENDING_REVIEW"
+
+class JobLevel(str, Enum):
+    ENTRY = "ENTRY"
+    MID = "MID"
+    SENIOR = "SENIOR"
+    LEAD = "LEAD"
+    MANAGER = "MANAGER"
+    EXECUTIVE = "EXECUTIVE"
+
+class DepartmentType(str, Enum):
+    ENGINEERING = "ENGINEERING"
+    PRODUCT = "PRODUCT"
+    DESIGN = "DESIGN"
+    MARKETING = "MARKETING"
+    SALES = "SALES"
+    SUPPORT = "SUPPORT"
+    HR = "HR"
+    FINANCE = "FINANCE"
+    OPERATIONS = "OPERATIONS"
 
 class SpeakerType(str, Enum):
     AGENT = "AGENT"
-    CALLER = "CALLER"
+    CANDIDATE = "CANDIDATE"
     SYSTEM = "SYSTEM"
 
-class CallerInput(BaseModel):
-    phoneNumber: Optional[str] = None
+class CandidateInput(BaseModel):
+    email: Optional[str] = None
+    phone: Optional[str] = None
     name: Optional[str] = None
-    language: Optional[str] = Field(default="Tamil")
+    resume: Optional[str] = None
+    experience: Optional[str] = None
+    skills: Optional[str] = None
+    education: Optional[str] = None
 
-class LocationInput(BaseModel):
-    address: Optional[str] = None
-    landmark: Optional[str] = None
-    gpsCoordinates: Optional[str] = None
-    city: Optional[str] = None
-    district: Optional[str] = None
-
-class SessionInput(BaseModel):
-    callerId: Optional[str] = None
-    phoneNumber: Optional[str] = None
-    emergencyType: Optional[EmergencyType] = None
-    locationId: Optional[str] = None
+class InterviewInput(BaseModel):
+    candidateId: Optional[str] = None
+    position: Optional[str] = None
+    department: Optional[str] = None
+    level: Optional[JobLevel] = Field(default=JobLevel.ENTRY)
     description: Optional[str] = None
-    priorityLevel: Optional[int] = Field(default=3, ge=1, le=5)
-    responseNotes: Optional[str] = None
+    feedback: Optional[str] = None
+    overallScore: Optional[int] = Field(default=0, ge=0, le=100)
+    status: Optional[InterviewStatus] = None
+    
+    # Detailed evaluation parameters
+    technicalSkillScore: Optional[int] = Field(default=0, ge=0, le=100, description="Score for technical skills and knowledge")
+    problemSolvingScore: Optional[int] = Field(default=0, ge=0, le=100, description="Score for problem-solving abilities")
+    communicationScore: Optional[int] = Field(default=0, ge=0, le=100, description="Score for communication skills")
+    attitudeScore: Optional[int] = Field(default=0, ge=0, le=100, description="Score for attitude and cultural fit")
+    experienceRelevanceScore: Optional[int] = Field(default=0, ge=0, le=100, description="Score for relevance of past experience")
+    
+    # Detailed evaluation text fields
+    strengthsNotes: Optional[str] = Field(default=None, description="Notes about candidate's key strengths")
+    improvementAreasNotes: Optional[str] = Field(default=None, description="Notes about areas for improvement")
+    technicalFeedback: Optional[str] = Field(default=None, description="Detailed feedback on technical aspects")
+    culturalFitNotes: Optional[str] = Field(default=None, description="Assessment of cultural fit")
+    recommendationNotes: Optional[str] = Field(default=None, description="Recommendations for next steps")
 
-class SessionTranscriptInput(BaseModel):
-    sessionId: str
+class InterviewTranscriptInput(BaseModel):
+    interviewId: str
     speakerType: SpeakerType
     content: str
     timestamp: Optional[datetime.datetime] = None
 
-class ResponderInput(BaseModel):
-    responderType: ResponderType
-    identifier: str
-    status: ResponderStatus = Field(default=ResponderStatus.AVAILABLE)
-    locationId: Optional[str] = None
-
-class DispatchInput(BaseModel):
-    sessionId: str
-    responderId: str
-    notes: Optional[str] = None
+class UserInput(BaseModel):
+    email: str
+    password: str
+    name: Optional[str] = None
+    isAdmin: bool = False
+    isVerified: bool = False
+    resetPasswordToken: Optional[str] = None
+    resetPasswordExpires: Optional[datetime.datetime] = None
 

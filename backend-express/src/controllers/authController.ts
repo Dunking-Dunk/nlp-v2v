@@ -1,15 +1,15 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { 
-  hashPassword, 
-  verifyPassword, 
-  generateToken, 
+import {
+  hashPassword,
+  verifyPassword,
+  generateToken,
   generateRandomToken,
-  generateTokenExpiration 
+  generateTokenExpiration
 } from '../utils/authUtils';
-import { 
-  sendVerificationEmail, 
-  sendPasswordResetEmail 
+import {
+  sendVerificationEmail,
+  sendPasswordResetEmail
 } from '../utils/emailService';
 
 const prisma = new PrismaClient();
@@ -96,8 +96,8 @@ export const verifyEmail = async (req: Request, res: Response): Promise<void> =>
       await prisma.verificationToken.delete({
         where: { id: verificationToken.id }
       });
-      
-      res.status(400).json({ 
+
+      res.status(400).json({
         message: 'Verification token has expired. Please request a new one.',
         expired: true
       });
@@ -157,9 +157,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     // Check if user is verified
     if (!user.isVerified) {
-      res.status(401).json({ 
+      res.status(401).json({
         message: 'Please verify your email before logging in',
-        needsVerification: true 
+        needsVerification: true
       });
       return;
     }
@@ -355,22 +355,22 @@ export const getCurrentUser = async (req: Request, res: Response): Promise<void>
   try {
     // Get user id from cookie
     const userId = req.cookies?.userId;
-    
+
     if (!userId) {
       res.status(401).json({ message: 'Not authenticated' });
       return;
     }
-    
+
     // Find user in database
     const user = await prisma.user.findUnique({
-      where: { id: parseInt(userId) },
+      where: { id: userId },
     });
-    
+
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
     }
-    
+
     // Return user info (excluding password)
     res.status(200).json({
       user: {
@@ -395,7 +395,7 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
   try {
     // Clear the user id cookie
     res.clearCookie('userId');
-    
+
     res.status(200).json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Logout error:', error);
