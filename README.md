@@ -1,6 +1,6 @@
-# Agent Dispatcher - Emergency Response System
+# Technical Interview System
 
-A comprehensive emergency response system featuring a voice AI agent for dispatching emergency services in Tamil Nadu. This system integrates voice recognition, natural language processing, and real-time response capabilities to handle emergency calls for ambulance (108), police (100), and fire (101) services.
+A comprehensive technical interview system featuring a voice AI agent for conducting automated technical interviews. This system integrates voice recognition, natural language processing, and real-time response capabilities to conduct professional technical interviews for software engineering positions.
 
 ## Project Structure
 
@@ -9,33 +9,37 @@ The project consists of three main components:
 ### 1. Agent (Voice AI)
 - Located in `/agent/`
 - Built with Python and LiveKit Agents
-- Uses Deepgram for speech-to-text and text-to-speech
-- Uses Google Gemini for natural language processing
-- Handles real-time voice conversations with callers
-- Designed to detect emergencies, extract crucial information, and provide appropriate guidance
+- Uses Deepgram for speech-to-text and Google for text-to-speech
+- Integrates with WebSockets for real-time updates
+- Handles real-time voice conversations with candidates
+- Designed to conduct interviews, ask technical questions, and provide feedback
+- Stores interview data including transcripts, feedback, and scoring
 
 ### 2. Frontend
 - Located in `/frontend/`
-- Built with React, TypeScript, and Vite
-- Provides a user interface for interacting with the system
+- Built with React 19, TypeScript, and Vite
+- Uses TailwindCSS and Radix UI components for styling
+- Socket.io for real-time communication
+- Provides a user interface for managing interviews and viewing results
 - Connected to the backend through API endpoints
 
 ### 3. Backend API
 - Located in `/backend-express/`
-- Built with Express, TypeScript, and Prisma
+- Built with Express, TypeScript, and Prisma ORM
 - Manages data persistence and business logic
 - Provides API endpoints for the frontend
-- Integrates with the agent for call handling
+- Uses Socket.io for real-time updates
+- Integrates with the agent for interview handling
 
 ## Features
 
-- **Multi-service emergency handling**: Supports ambulance, police, and fire emergency responses
-- **Real-time voice interaction**: Natural conversation with callers using AI voice technology
-- **Automatic dispatch**: Intelligently routes emergency calls to appropriate services
-- **Emotion detection**: Adapts tone based on caller distress level
-- **Multi-language support**: Handles Tamil, English, and Hindi
-- **Background noise analysis**: Detects critical sounds (gunshots, sirens, crashes)
-- **Smart call prioritization**: Automatically escalates life-threatening cases
+- **Professional technical interviews**: Conducts thorough software engineering interviews
+- **Real-time voice interaction**: Natural conversation with candidates using AI voice technology
+- **Comprehensive feedback**: Provides detailed evaluation on technical skills, problem-solving, and communication
+- **Automatic transcription**: Records and stores the entire interview conversation
+- **Detailed scoring**: Evaluates candidates on multiple dimensions including technical skills, problem-solving, communication, and cultural fit
+- **WebSocket integration**: Provides real-time updates during the interview process
+- **Flexible interview configuration**: Customizable for different positions and departments
 
 ## Setup Instructions
 
@@ -66,6 +70,8 @@ The project consists of three main components:
    LIVEKIT_API_KEY=your_api_key
    LIVEKIT_API_SECRET=your_api_secret
    DEEPGRAM_API_KEY=your_deepgram_key
+   GOOGLE_API_KEY=your_google_api_key
+   WEBSOCKET_URL=http://localhost:5000
    ```
 
 6. Run the agent:
@@ -122,10 +128,12 @@ The project consists of three main components:
 
 ## Technologies Used
 
-- **Voice AI**: LiveKit Agents, Deepgram, Google Gemini
-- **Frontend**: React, TypeScript, Vite
-- **Backend**: Express, TypeScript, Prisma
+- **Voice AI**: LiveKit Agents, Deepgram, Google Text-to-Speech
+- **Frontend**: React 19, TypeScript, Vite, TailwindCSS, Radix UI
+- **Backend**: Express, TypeScript, Prisma ORM
 - **Database**: SQLite (development), PostgreSQL (production)
+- **Real-time Communication**: Socket.io
+- **Authentication**: JWT
 
 ## License
 
